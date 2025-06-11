@@ -8,8 +8,7 @@ env/
 venv/
 .venv/
 
-# Data (if large)
-data/raw/*.csv
+
 
 # Jupyter
 .ipynb_checkpoints/
