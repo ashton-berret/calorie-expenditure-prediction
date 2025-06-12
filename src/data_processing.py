@@ -271,6 +271,133 @@ def gen_outlier_summary(df):
     return outlier_summery
 
 
+def calculate_calorie_burn_rate(df):
+    '''
+        Calculate calorie burn rate (calories per minute) for outlier detection
+        
+        Args:
+            df (DataFrame): dataset with calories and duration columns
+            
+        Returns:
+            df (DataFrame): dataset with added calorie_burn_rate column
+    '''
+    df = df.copy()
+    df['calorie_burn_rate'] = df['calories'] / df['duration']
+    return df
+
+
+def remove_calorie_rate_outliers_synthetic(df):
+    '''
+        Remove all calorie rate outliers from synthetic dataset (generation artifacts)
+        
+        Args:
+            df (DataFrame): synthetic dataset with calorie_burn_rate column
+            
+        Returns:
+            tuple: (cleaned_dataframe, removal_summary_dict)
+    '''
+    df = df.copy()
+    
+    # Get outliers using IQR method
+    outliers, lower, upper = detect_outliers_iqr(df, 'calorie_burn_rate')
+    
+    # Remove all outliers
+    df_clean = df[~df.index.isin(outliers.index)].copy()
+    
+    removal_summary = {
+        'original_count': len(df),
+        'outliers_removed': len(outliers),
+        'final_count': len(df_clean),
+        'percentage_removed': len(outliers) / len(df) * 100,
+        'method': 'IQR_all_outliers'
+    }
+    
+    print(f"Removed {len(outliers)} outliers ({len(outliers)/len(df)*100:.2f}%) from synthetic dataset")
+    
+    return df_clean, removal_summary
+
+
+def remove_calorie_rate_outliers_original(df, min_rate=2.0):
+    '''
+        Remove only unrealistically LOW calorie rates from original dataset
+        
+        Args:
+            df (DataFrame): original dataset with calorie_burn_rate column
+            min_rate (float): minimum realistic exercise calorie rate per minute
+            
+        Returns:
+            tuple: (cleaned_dataframe, removal_summary_dict)
+    '''
+    df = df.copy()
+    
+    # count records below minimum rate
+    low_outliers = df[df['calorie_burn_rate'] < min_rate]
+    
+    # keep only records with realistic calorie burn rates
+    df_clean = df[df['calorie_burn_rate'] >= min_rate].copy()
+    
+    removal_summary = {
+        'original_count': len(df),
+        'outliers_removed': len(low_outliers),
+        'final_count': len(df_clean),
+        'percentage_removed': len(low_outliers) / len(df) * 100,
+        'method': f'low_end_only_min_{min_rate}',
+        'min_rate_threshold': min_rate
+    }
+    
+    print(f"Removed {len(low_outliers)} low-end outliers ({len(low_outliers)/len(df)*100:.2f}%) from original dataset")
+    
+    return df_clean, removal_summary
+
+
+def investigate_duration_calorie_relationship(df, n_extremes=10):
+    '''
+        Examine duration-calorie relationship to detect calculation artifacts
+        
+        Args:
+            df (DataFrame): dataset with duration, calories, and calorie_burn_rate columns
+            n_extremes (int): number of extreme values to display
+            
+        Returns:
+            dict: analysis results with highest/lowest rates and statistics
+    '''
+    print('===== Duration v Calorie Range Analysis =====')
+    
+    # get highest and lowest calorie rates
+    highest_rates = df.nlargest(n_extremes, 'calorie_burn_rate')[['duration', 'calories', 'calorie_burn_rate']]
+    lowest_rates = df.nsmallest(n_extremes, 'calorie_burn_rate')[['duration', 'calories', 'calorie_burn_rate']]
+    
+    print(f"Highest {n_extremes} calorie rates (cal/min):")
+    print(highest_rates)
+    print(f"\nLowest {n_extremes} calorie rates (cal/min):")
+    print(lowest_rates)
+    
+    # calculate statistics
+    mean_rate = df['calorie_burn_rate'].mean()
+    std_rate = df['calorie_burn_rate'].std()
+    min_rate = df['calorie_burn_rate'].min()
+    max_rate = df['calorie_burn_rate'].max()
+    
+    print(f"\nCalorie rate statistics:")
+    print(f"Mean: {mean_rate:.2f} cal/min")
+    print(f"Std: {std_rate:.2f} cal/min")
+    print(f"Range: {min_rate:.2f} - {max_rate:.2f}")
+    
+    analysis_results = {
+        'highest_rates': highest_rates,
+        'lowest_rates': lowest_rates,
+        'statistics': {
+            'mean': mean_rate,
+            'std': std_rate,
+            'min': min_rate,
+            'max': max_rate
+        }
+    }
+    
+    return analysis_results
+
+
+
 def gen_body_temp_analysis(df):
     '''
         Generate a summary of the dataset's body temperature data against physiological norms
