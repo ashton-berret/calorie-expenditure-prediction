@@ -264,7 +264,7 @@ def gen_outlier_summary(df):
             'upper_boundary': upper
         }
 
-        print(f'{col}: {outlier_summery['count']} outliers, ({outlier_summery['count'] / len(df) * 100:.2f}%)')
+        print(f"{col}: {outlier_summery['count']} outliers, ({outlier_summery['count'] / len(df) * 100:.2f}%)")
         print(f'Bounds: [{lower:.2f}, {upper:.2f}]')
         print()
     
@@ -407,7 +407,7 @@ def gen_body_temp_analysis(df):
             ...
     '''
     print('===== Body Temperature Range Analysis =====')
-    print(f'Dataset Range: {df['body_temp'].min():.1f}°F - {df['body_temp'].max():.1f}°F')
+    print(f"Dataset Range: {df['body_temp'].min():.1f}°F - {df['body_temp'].max():.1f}°F")
     print(f'Expected Range: 99.0°F - 101.0°F')
     print('Heat Exhaustion Range: 101.0°F - 104.0°F')
 
