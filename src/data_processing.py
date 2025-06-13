@@ -50,6 +50,40 @@ def basic_data_info(df, dataset_name='Dataset'):
     print(f'\nBasic Stats:\n{df.describe()}')
 
 
+def combine_datasets(synthetic_path, original_path):
+    """
+    load, clean, and combine datasets with proper tagging
+    
+    Returns:
+        combined_df: Ready for feature engineering
+    """
+
+    # load datasets
+    synthetic_df = load_data(synthetic_path, dataset_type='synthetic_train')
+    og_df = load_data(original_path, dataset_type='og_all')
+    
+    # clean column names
+    clean_column_names(synthetic_df)
+    clean_column_names(og_df)
+    
+    # standardize column names
+    og_df = og_df.rename(columns={'gender': 'sex'})
+    og_df.drop(columns=['user_id'], inplace=True)
+    
+    # add dataset tags
+    synthetic_df['tag'] = 'syn_train'
+    og_df['tag'] = 'og_all'
+    
+    # combine
+    combined_df = pd.concat([synthetic_df, og_df], ignore_index=True)
+    
+    print(f"✅ Combined datasets: {len(combined_df)} total samples")
+    print(f"   • Synthetic: {len(synthetic_df)} samples")
+    print(f"   • Original: {len(og_df)} samples")
+    
+    return combined_df
+
+
 def kg_to_lbs(df):
     '''
         Convert the DataFrame's weight column units from kilograms to pounds
@@ -428,3 +462,183 @@ def gen_body_temp_analysis(df):
 
 
 
+def categorize_bmi(df):
+    conditions = [
+        df['bmi'] < 18.5,
+        (df['bmi'] >= 18.5) & (df['bmi'] < 25),
+        (df['bmi'] >= 25) & (df['bmi'] < 30),
+        (df['bmi'] >= 30) & (df['bmi'] < 35),
+        (df['bmi'] >= 35) & (df['bmi'] < 40),
+        df['bmi'] >= 40
+    ]
+
+    choices = [
+        'underweight',
+        'healthy',
+        'overweight',
+        'obesity1',
+        'obesity2',
+        'obesity3'
+    ]
+    
+    df['bmi_category'] = np.select(conditions, choices, default='unknown')
+    return df
+
+
+'''
+    BMR calculations using mifflin - st jeor formulas
+        Men:
+            10 * weight(kg) + 6.25 x height(cm) - 5 x age + 5
+        Women:
+            10 * weight(kg) + 6.25 x height(cm) - 5 x age - 161
+'''
+
+def calculate_bmr(df):
+    conditions = [
+        df['sex'] == 'male',
+        df['sex'] == 'female'
+    ]
+
+    choices = [
+        10 * df['weight'] + 6.25 * df['height'] - 5 * df['age'] + 5,
+        10 * df['weight'] + 6.25 * df['height'] - 5 * df['age'] - 161
+    ]
+    
+    df['bmr'] = pd.to_numeric(np.select(conditions, choices, default='unknown'), errors='coerce')
+    return df
+
+
+def calculate_metabolic_efficiency(df):
+    df['met_efficiency'] = df['calories'] / df['bmr']
+
+    return df
+
+
+
+# body surface area using dubois formula
+
+def calculate_bsa(df):
+    df['bsa'] = 0.007184 * (df['height'] ** 0.725) * (df['weight'] ** 0.425)
+
+    return df
+
+
+def calculate_hr_percentage(df):
+
+    theoretical_max = 220 - df['age']
+
+    df['hr_percentage'] = df['heart_rate'] / theoretical_max
+
+    return df
+
+
+def categorize_hr_zone(df):
+    conditions = [
+        df['hr_percentage'] < 0.50,
+        (df['hr_percentage'] >= .50) & (df['hr_percentage'] < .60),
+        (df['hr_percentage'] >= .60) & (df['hr_percentage'] < .70),
+        (df['hr_percentage'] >= .70) & (df['hr_percentage'] < .80),
+        (df['hr_percentage'] >= .80) & (df['hr_percentage'] < .90),
+        df['hr_percentage'] >= .90
+    ]
+
+    choices = [
+        'Light',
+        'Zone 1',
+        'Zone 2',
+        'Zone 3',
+        'Zone 4',
+        'Zone 5'
+    ]
+
+    df['hr_zone'] = np.select(conditions, choices, default='unknown')
+
+    return df
+
+
+def calculate_effort_score(df):
+    
+    df['effort_score'] = df['hr_percentage'] * df['duration']
+    return df
+
+
+def calculate_thermoregulatory_strain(df):
+
+    df['thermo_strain'] = df['body_temp'] * df['duration']
+    return df
+
+
+
+def categorize_age(df):
+    conditions = [
+        df['age'] < 20,
+        (df['age'] >= 20) & (df['age'] <= 30),
+        (df['age'] > 30) & (df['age'] <= 40),
+        (df['age'] > 40) & (df['age'] <= 50),
+        (df['age'] > 50) & (df['age'] <= 60),
+        (df['age'] > 60) & (df['age'] <= 70),
+        df['age'] > 70
+    ]
+
+    choices = [
+        'Under 20',
+        '20s',
+        '30s',
+        '40s',
+        '50s',
+        '60s',
+        '70s+'
+    ]
+
+    df['age_bin'] = np.select(conditions, choices, default='unknow')
+
+    return df
+
+
+
+
+def categorize_correlations(high_corr_df):
+    """
+    categorize correlations by type for better understanding
+    """
+    categories = {
+        'Calculated from Base Features': [],
+        'Interaction Terms': [],
+        'Physiological Related': [],
+        'Duration Related': [],
+        'Other': []
+    }
+    
+    for idx, row in high_corr_df.iterrows():
+        var1, var2 = row['Variable 1'], row['Variable 2']
+        pair = f"{var1} ↔ {var2}"
+        corr = row['Correlation']
+        
+        # calculated features
+        if any(calc in [var1, var2] for calc in ['bmi', 'bmr', 'bsa', 'hr_percentage']):
+            categories['Calculated from Base Features'].append(f"{pair}: {corr:.3f}")
+        
+        # interaction terms
+        elif any(inter in [var1, var2] for inter in ['effort_score', 'thermo_strain', 'met_efficiency']):
+            categories['Interaction Terms'].append(f"{pair}: {corr:.3f}")
+        
+        # duration related
+        elif 'duration' in [var1, var2]:
+            categories['Duration Related'].append(f"{pair}: {corr:.3f}")
+        
+        # physiological
+        elif any(phys in [var1, var2] for phys in ['height', 'weight', 'age', 'heart_rate', 'body_temp']):
+            categories['Physiological Related'].append(f"{pair}: {corr:.3f}")
+        
+        else:
+            categories['Other'].append(f"{pair}: {corr:.3f}")
+    
+    print("\nCORRELATION CATEGORIES:")
+    print("=" * 60)
+    
+    for category, pairs in categories.items():
+        if pairs:
+            print(f"\n{category}:")
+            print("-" * len(category))
+            for pair in pairs:
+                print(f"  • {pair}")
