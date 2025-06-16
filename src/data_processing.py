@@ -464,7 +464,7 @@ def gen_body_temp_analysis(df):
 
 def categorize_bmi(df):
     conditions = [
-        df['bmi'] < 18.5,
+        (df['bmi'] < 18.5),
         (df['bmi'] >= 18.5) & (df['bmi'] < 25),
         (df['bmi'] >= 25) & (df['bmi'] < 30),
         (df['bmi'] >= 30) & (df['bmi'] < 35),
@@ -530,6 +530,11 @@ def calculate_hr_percentage(df):
     df['hr_percentage'] = df['heart_rate'] / theoretical_max
 
     return df
+
+def calculate_bmi(df):
+    df['bmi'] = df['weight'] / ((df['height'] / 100) ** 2)
+    return df
+
 
 
 def categorize_hr_zone(df):

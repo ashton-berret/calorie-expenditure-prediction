@@ -1,0 +1,5 @@
+dataset,samples,features,has_target,mean_calories,gender_split
+og_train,10411,9,True,90.48679281529152,"{'female': 5287, 'male': 5124}"
+og_val,2231,9,True,89.71402958314657,"{'female': 1133, 'male': 1098}"
+og_test,2231,9,True,89.63514119229045,"{'female': 1133, 'male': 1098}"
+synthetic_full,743413,9,True,87.48133137300532,"{'female': 375476, 'male': 367937}"
