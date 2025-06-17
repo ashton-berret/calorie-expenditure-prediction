@@ -23,3 +23,9 @@ models/*.pkl
 # OS
 .DS_Store
 Thumbs.db
+
+# Large Data Files
+data/final/*.csv
+data/processed/*.csv
+data/raw/*.csv
+
