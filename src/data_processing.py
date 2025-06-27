@@ -77,7 +77,7 @@ def combine_datasets(synthetic_path, original_path):
     # combine
     combined_df = pd.concat([synthetic_df, og_df], ignore_index=True)
     
-    print(f"✅ Combined datasets: {len(combined_df)} total samples")
+    print(f"Combined datasets: {len(combined_df)} total samples")
     print(f"   • Synthetic: {len(synthetic_df)} samples")
     print(f"   • Original: {len(og_df)} samples")
     
